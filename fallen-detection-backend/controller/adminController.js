@@ -1,7 +1,8 @@
 const DeviceMaster = require("../model/DeviceMaster");
 const CareTable = require("../model/CareTable");
+const bcrypt = require("bcryptjs");
 
-// Register Device
+// ================= REGISTER DEVICE =================
 exports.registerDevice = async (req, res) => {
   try {
     const { deviceId } = req.body;
@@ -20,7 +21,7 @@ exports.registerDevice = async (req, res) => {
   }
 };
 
-// Create Caretaker
+// ================= CREATE CARETAKER (HASHED PASSWORD) =================
 exports.createCaretaker = async (req, res) => {
   try {
     const { name, username, password, elderName, deviceId } = req.body;
@@ -30,10 +31,14 @@ exports.createCaretaker = async (req, res) => {
       return res.status(400).json({ message: "Username already exists" });
     }
 
+    // 🔐 HASH PASSWORD
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
     const caretaker = new CareTable({
       name,
       username,
-      password,
+      password: hashedPassword,
       elderName,
       deviceId
     });
@@ -46,27 +51,36 @@ exports.createCaretaker = async (req, res) => {
   }
 };
 
-// Get Devices
+// ================= GET DEVICES =================
 exports.getDevices = async (req, res) => {
-  const devices = await DeviceMaster.find();
-  res.json(devices);
+  try {
+    const devices = await DeviceMaster.find();
+    res.json(devices);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
-// Get Caretakers
+// ================= GET CARETAKERS =================
 exports.getCaretakers = async (req, res) => {
-  const caretakers = await CareTable.find()
-    .populate("deviceId", "deviceId");
-  res.json(caretakers);
+  try {
+    const caretakers = await CareTable.find()
+      .select("-password"); // exclude password
+    res.json(caretakers);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
-// Update Caretaker (username & password NOT editable)
+// ================= UPDATE CARETAKER =================
 exports.updateCaretaker = async (req, res) => {
   try {
     const { name, elderName, deviceId } = req.body;
 
     await CareTable.findByIdAndUpdate(
       req.params.id,
-      { name, elderName, deviceId }
+      { name, elderName, deviceId },
+      { new: true }
     );
 
     res.json({ message: "Caretaker Updated Successfully" });
@@ -75,7 +89,7 @@ exports.updateCaretaker = async (req, res) => {
   }
 };
 
-// Delete Caretaker
+// ================= DELETE CARETAKER =================
 exports.deleteCaretaker = async (req, res) => {
   try {
     await CareTable.findByIdAndDelete(req.params.id);
@@ -85,7 +99,7 @@ exports.deleteCaretaker = async (req, res) => {
   }
 };
 
-// Get All Caretakers 
+// ================= GET ALL CARETAKERS (SAFE) =================
 exports.getAllCaretakers = async (req, res) => {
   try {
     const caretakers = await CareTable.find().select("-password");
