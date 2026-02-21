@@ -5,7 +5,7 @@ const connectDB = require("./config/db");
 
 const authRoute = require("./route/authRoute");
 const adminRoute = require("./route/adminRoute");
-
+const caretakerRoute = require("./route/caretakerRoute");
 const app = express();
 
 // Connect DB
@@ -18,6 +18,7 @@ app.use(express.json());
 // Routes
 app.use("/api/auth", authRoute);
 app.use("/api/admin", adminRoute);
+app.use("/api/caretaker", caretakerRoute);
 
 const PORT = process.env.PORT || 5001;
 

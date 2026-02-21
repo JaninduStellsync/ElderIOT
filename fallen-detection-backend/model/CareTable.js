@@ -5,7 +5,11 @@ const careSchema = new mongoose.Schema({
   username: { type: String, unique: true, required: true },
   password: { type: String, required: true },
   elderName: { type: String, required: true },
-  deviceId: { type: String, required: true }
+  deviceId: {
+    type: String,
+    ref: "DeviceMaster",
+    required: true
+  }
 });
 
 module.exports = mongoose.model("CareTable", careSchema);
