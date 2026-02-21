@@ -58,6 +58,7 @@ useEffect(() => {
     }
   };
 
+
   
   checkFall();
   const interval = setInterval(checkFall, 5000);
