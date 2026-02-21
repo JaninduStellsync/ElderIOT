@@ -44,6 +44,11 @@ const Login = () => {
       if (res.data.role === "admin") {
         navigate("/admin");
       } else {
+                localStorage.setItem(
+                "caretaker",
+                JSON.stringify(res.data.caretaker)
+                );
+
         navigate("/caretaker");
       }
     } catch {

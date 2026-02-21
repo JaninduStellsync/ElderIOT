@@ -4,21 +4,22 @@ exports.login = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // Admin login
     if (username === "admin" && password === "0000") {
       return res.json({ role: "admin" });
     }
 
-    // Caretaker login
     const caretaker = await CareTable.findOne({ username, password });
+    console.log("Caretaker from DB:", caretaker);
 
     if (!caretaker) {
       return res.status(401).json({ message: "Invalid Credentials" });
     }
 
+    const { password: _, ...safeCaretaker } = caretaker._doc;
+
     res.json({
       role: "caretaker",
-      caretaker
+      caretaker: safeCaretaker
     });
 
   } catch (error) {
