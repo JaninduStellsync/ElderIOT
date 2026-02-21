@@ -22,10 +22,10 @@ MPU6050 mpu;
 // ================= DEVICE ID =================
 String deviceID;
 
-// ================= FALL LOGIC VARIABLES =================
-bool freeFallDetected = false;
+// ================= FALL VARIABLES =================
 bool impactDetected = false;
 unsigned long impactTime = 0;
+long previousA = 0;
 
 // ================= TIMING =================
 unsigned long lastSendTime = 0;
@@ -70,7 +70,6 @@ void setup() {
   Serial.print("Device ID: ");
   Serial.println(deviceID);
 
-  // Initialize MPU6050
   mpu.initialize();
   if (mpu.testConnection()) {
     Serial.println("MPU6050 connected");
@@ -80,7 +79,7 @@ void setup() {
 
   connectWiFi();
 
-  espClient.setInsecure();   // Required for HiveMQ SSL
+  espClient.setInsecure();
   client.setServer(mqtt_server, mqtt_port);
 }
 
@@ -96,48 +95,53 @@ void loop() {
   mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
 
   long A = sqrt((long)ax * ax + (long)ay * ay + (long)az * az);
+  long gyroMag = sqrt((long)gx * gx + (long)gy * gy + (long)gz * gz);
+  long deltaA = abs(A - previousA);
 
   bool fallDetectedNow = false;
 
-  // ===== FREE FALL =====
-  if (A < 6000) {
-    freeFallDetected = true;
-  }
+  // ===== STAGE 1: SUDDEN MOVEMENT =====
+  bool suddenMovement = (deltaA > 5000);
 
-  // ===== IMPACT =====
-  if (freeFallDetected && A > 20000) {
+  // ===== STAGE 2: STRONG ROTATION =====
+  bool strongRotation = (gyroMag > 1200);
+
+  // ===== STAGE 3: IMPACT =====
+  bool impact = (A > 17000);
+
+  if (suddenMovement && strongRotation && impact) {
     impactDetected = true;
     impactTime = millis();
   }
 
-  // ===== STILLNESS CONFIRM =====
-  if (impactDetected && (millis() - impactTime > 1500)) {
-    if (A > 14000 && A < 18000) {
+  // ===== STAGE 4: STILLNESS CONFIRM =====
+  if (impactDetected && (millis() - impactTime > 1200)) {
+
+    bool stillness = (A > 14000 && A < 18000);
+
+    if (stillness) {
       fallDetectedNow = true;
-      Serial.println("🚨 FALL DETECTED 🚨");
+      Serial.println("🚨 FALL DETECTED (Improved v2) 🚨");
     }
-    freeFallDetected = false;
+
     impactDetected = false;
   }
 
-  // ===== ALWAYS PRINT SENSOR VALUES =====
-  Serial.print("A: ");
-  Serial.print(A);
-  Serial.print(" | ax: "); Serial.print(ax);
-  Serial.print(" ay: "); Serial.print(ay);
-  Serial.print(" az: "); Serial.print(az);
-  Serial.print(" | Fall: ");
-  Serial.println(fallDetectedNow);
+  previousA = A;
+
+  // ===== DEBUG PRINT =====
+  Serial.print("A: "); Serial.print(A);
+  Serial.print(" | deltaA: "); Serial.print(deltaA);
+  Serial.print(" | gyroMag: "); Serial.print(gyroMag);
+  Serial.print(" | Fall: "); Serial.println(fallDetectedNow);
 
   unsigned long currentTime = millis();
   bool shouldSend = false;
 
-  // Send immediately if fall detected
   if (fallDetectedNow) {
     shouldSend = true;
   }
 
-  // Send normal data every minute
   if (currentTime - lastSendTime > normalInterval) {
     shouldSend = true;
   }
