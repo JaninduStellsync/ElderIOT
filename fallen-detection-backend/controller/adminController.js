@@ -84,3 +84,13 @@ exports.deleteCaretaker = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// Get All Caretakers 
+exports.getAllCaretakers = async (req, res) => {
+  try {
+    const caretakers = await CareTable.find().select("-password");
+    res.json(caretakers);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
